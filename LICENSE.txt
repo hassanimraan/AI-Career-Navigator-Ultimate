@@ -1,0 +1,4 @@
+This MVP's application code is provided for demonstration and development purposes.
+
+Third-party dependencies and ESCO data/services remain subject to their respective licenses and terms.
+See the official ESCO documentation for ESCO licensing information.
