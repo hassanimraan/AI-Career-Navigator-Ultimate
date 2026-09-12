@@ -168,35 +168,42 @@ elif page == "Career Profile":
 
     with st.form("career_profile_form"):
 
-        name = st.text_input(
-            "Name",
-            placeholder="Enter your name",
+      education = st.selectbox(
+            "Education level",
+            ["High School", "Diploma", "Bachelor's", "Master's", "PhD", "Other"],
         )
-
-        education = st.text_input(
-            "Education",
-            placeholder="e.g. BS Computer Science",
-        )
-
-        experience = st.text_area(
-            "Experience",
-            placeholder="Describe your work experience, internships, projects, etc.",
-        )
-
-        skills = st.text_area(
-            "Current Skills",
-            placeholder="e.g. Python, Excel, Communication, SQL",
+       
+        degree = st.text_input("Degree / field", placeholder="e.g., Electrical Engineering")
+        st.subheader("Skills")
+        skill_text = st.text_area(
+            "Skills and approximate levels",
+            placeholder="Python: intermediate\nElectrical design: advanced\nProject management: beginner",
+            height=130,
         )
 
         interests = st.text_area(
-            "Career Interests",
-            placeholder="e.g. AI, Data Science, Web Development",
+            "Interests",
+            placeholder="AI, renewable energy, data analysis, automation",
+        )
+
+        work_preferences = st.multiselect(
+            "Work preferences",
+            ["Remote", "Hybrid", "On-site", "Individual contributor",
+             "Team-based", "Technical", "Management", "Research", "Entrepreneurship"],
+        )
+
+        experience = st.text_area(
+            "Experience / projects",
+            placeholder="Describe internships, jobs, university projects, freelance work, certifications, etc.",
+            height=150,
         )
 
         career_goal = st.text_area(
-            "Career Goal",
-            placeholder="What career do you want to pursue?",
+            "Career goal",
+            placeholder="What do you want to achieve in the next 1–3 years?",
+            height=100,
         )
+
 
         uploaded_cv = st.file_uploader(
             "Upload CV (optional)",
