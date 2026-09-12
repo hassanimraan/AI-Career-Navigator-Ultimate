@@ -25,7 +25,7 @@ def get_settings() -> Settings:
 
     return Settings(
         gemini_api_key=secret_or_env("GEMINI_API_KEY"),
-        gemini_model=secret_or_env("GEMINI_MODEL", "gemini-2.5-flash"),
+        gemini_model=secret_or_env("GEMINI_MODEL", "gemini-3.6-flash"),
         esco_base_url=secret_or_env(
             "ESCO_BASE_URL",
             "https://ec.europa.eu/esco/api",
