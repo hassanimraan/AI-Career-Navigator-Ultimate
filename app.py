@@ -52,7 +52,7 @@ pages = [
 ]
 
 
-def go_to(page_name):
+def go_to(page_name: str):
     st.session_state.current_page = page_name
     st.rerun()
 
@@ -69,9 +69,6 @@ with st.sidebar:
         st.session_state.current_page
     )
 
-    # IMPORTANT:
-    # Dynamic key prevents the sidebar radio from
-    # overwriting button-based navigation.
     selected_page = st.radio(
         "Navigate",
         pages,
@@ -124,7 +121,8 @@ if page == "Home":
     with col1:
         st.markdown("### 👤 Career Profile")
         st.write(
-            "Tell us about your education, experience, interests, and goals."
+            "Tell us about your education, skills, interests, "
+            "experience, and career goals."
         )
 
     with col2:
@@ -136,7 +134,8 @@ if page == "Home":
     with col3:
         st.markdown("### 🚀 Career Roadmap")
         st.write(
-            "Build a practical plan for improving your skills and reaching your goals."
+            "Build a practical plan for improving your skills "
+            "and reaching your goals."
         )
 
     st.divider()
@@ -146,6 +145,7 @@ if page == "Home":
         type="primary",
         use_container_width=True,
     ):
+
         st.session_state.profile = None
         st.session_state.assessment = None
         st.session_state.cv_text = ""
@@ -163,48 +163,79 @@ elif page == "Career Profile":
     st.title("👤 Career Profile")
 
     st.write(
-        "Complete your profile so the AI can provide personalized career recommendations."
+        "Complete your profile so the AI can provide "
+        "personalized career recommendations."
     )
 
     with st.form("career_profile_form"):
 
-      education = st.selectbox(
+        education = st.selectbox(
             "Education level",
-            ["High School", "Diploma", "Bachelor's", "Master's", "PhD", "Other"],
+            [
+                "High School",
+                "Diploma",
+                "Bachelor's",
+                "Master's",
+                "PhD",
+                "Other",
+            ],
         )
-       
-        degree = st.text_input("Degree / field", placeholder="e.g., Electrical Engineering")
-        
+
+        degree = st.text_input(
+            "Degree / field",
+            placeholder="e.g., Electrical Engineering",
+        )
+
         st.subheader("Skills")
+
         skill_text = st.text_area(
             "Skills and approximate levels",
-            placeholder="Python: intermediate\nElectrical design: advanced\nProject management: beginner",
+            placeholder=(
+                "Python: intermediate\n"
+                "Electrical design: advanced\n"
+                "Project management: beginner"
+            ),
             height=130,
         )
 
         interests = st.text_area(
             "Interests",
-            placeholder="AI, renewable energy, data analysis, automation",
+            placeholder=(
+                "AI, renewable energy, data analysis, automation"
+            ),
         )
 
         work_preferences = st.multiselect(
             "Work preferences",
-            ["Remote", "Hybrid", "On-site", "Individual contributor",
-             "Team-based", "Technical", "Management", "Research", "Entrepreneurship"],
+            [
+                "Remote",
+                "Hybrid",
+                "On-site",
+                "Individual contributor",
+                "Team-based",
+                "Technical",
+                "Management",
+                "Research",
+                "Entrepreneurship",
+            ],
         )
 
         experience = st.text_area(
             "Experience / projects",
-            placeholder="Describe internships, jobs, university projects, freelance work, certifications, etc.",
+            placeholder=(
+                "Describe internships, jobs, university projects, "
+                "freelance work, certifications, etc."
+            ),
             height=150,
         )
 
         career_goal = st.text_area(
             "Career goal",
-            placeholder="What do you want to achieve in the next 1–3 years?",
+            placeholder=(
+                "What do you want to achieve in the next 1–3 years?"
+            ),
             height=100,
         )
-
 
         uploaded_cv = st.file_uploader(
             "Upload CV (optional)",
@@ -217,13 +248,24 @@ elif page == "Career Profile":
             use_container_width=True,
         )
 
+    # --------------------------------------------------------
+    # FORM SUBMISSION
+    # --------------------------------------------------------
+
     if submitted:
 
-        if not name.strip():
-            st.error("Please enter your name.")
+        # Basic validation
+        if not degree.strip():
+            st.error("Please enter your degree or field.")
 
-        elif not education.strip():
-            st.error("Please enter your education.")
+        elif not skill_text.strip():
+            st.error("Please enter at least one skill.")
+
+        elif not interests.strip():
+            st.error("Please enter your interests.")
+
+        elif not career_goal.strip():
+            st.error("Please enter your career goal.")
 
         else:
 
@@ -236,6 +278,7 @@ elif page == "Career Profile":
             if uploaded_cv is not None:
 
                 try:
+
                     cv_text = extract_text_from_file(
                         uploaded_cv
                     )
@@ -243,6 +286,7 @@ elif page == "Career Profile":
                     st.session_state.cv_text = cv_text
 
                 except Exception as e:
+
                     st.warning(
                         f"Could not process the CV: {e}"
                     )
@@ -254,11 +298,12 @@ elif page == "Career Profile":
             try:
 
                 profile = CareerProfile.from_form(
-                    name=name,
                     education=education,
-                    experience=experience,
-                    skills=skills,
+                    degree=degree,
+                    skill_text=skill_text,
                     interests=interests,
+                    work_preferences=work_preferences,
+                    experience=experience,
                     career_goal=career_goal,
                     cv_text=cv_text,
                 )
@@ -301,11 +346,15 @@ elif page == "Career Assessment":
 
     else:
 
+        profile = st.session_state.profile
+
         st.write(
             "Analyze your profile to discover suitable career paths."
         )
 
-        profile = st.session_state.profile
+        # ----------------------------------------------------
+        # PROFILE PREVIEW
+        # ----------------------------------------------------
 
         with st.expander(
             "View Your Profile",
@@ -313,30 +362,59 @@ elif page == "Career Assessment":
         ):
 
             st.write(
-                f"**Name:** {getattr(profile, 'name', '')}"
+                f"**Education:** {profile.education}"
             )
 
             st.write(
-                f"**Education:** {getattr(profile, 'education', '')}"
+                f"**Degree / Field:** {profile.degree}"
+            )
+
+            st.write("**Skills:**")
+
+            if profile.skills:
+
+                for skill in profile.skills:
+
+                    st.write(
+                        f"- {skill.name}: {skill.level}%"
+                    )
+
+            else:
+
+                st.write("No skills entered.")
+
+            st.write(
+                f"**Interests:** {', '.join(profile.interests)}"
             )
 
             st.write(
-                f"**Experience:** {getattr(profile, 'experience', '')}"
+                "**Work Preferences:** "
+                + (
+                    ", ".join(profile.work_preferences)
+                    if profile.work_preferences
+                    else "None specified"
+                )
             )
 
             st.write(
-                f"**Skills:** {getattr(profile, 'skills', '')}"
+                f"**Experience:** {profile.experience}"
             )
 
             st.write(
-                f"**Interests:** {getattr(profile, 'interests', '')}"
+                f"**Career Goal:** {profile.career_goal}"
             )
 
-            st.write(
-                f"**Career Goal:** {getattr(profile, 'career_goal', '')}"
-            )
+            if profile.cv_text:
+
+                st.write(
+                    "📄 CV information has been included."
+                )
 
         st.divider()
+
+        # ----------------------------------------------------
+        # ANALYZE
+        # ----------------------------------------------------
 
         if st.button(
             "🔍 Analyze My Career",
@@ -345,7 +423,7 @@ elif page == "Career Assessment":
         ):
 
             with st.spinner(
-                "Analyzing your profile..."
+                "Analyzing your profile with AI and ESCO..."
             ):
 
                 try:
@@ -355,6 +433,10 @@ elif page == "Career Assessment":
                     )
 
                     st.session_state.assessment = assessment
+
+                    st.success(
+                        "Career assessment completed!"
+                    )
 
                 except Exception as e:
 
@@ -366,78 +448,97 @@ elif page == "Career Assessment":
         # SHOW ASSESSMENT
         # ----------------------------------------------------
 
-        if st.session_state.assessment is not None:
+        assessment = st.session_state.assessment
 
-            assessment = st.session_state.assessment
-
-            st.success(
-                "Career assessment completed!"
-            )
+        if assessment is not None:
 
             st.divider()
+
+            # ------------------------------------------------
+            # SUMMARY
+            # ------------------------------------------------
+
+            st.subheader("📝 Assessment Summary")
+
+            st.write(
+                assessment.summary
+            )
+
+            # ------------------------------------------------
+            # STRENGTHS
+            # ------------------------------------------------
+
+            if assessment.strengths:
+
+                st.subheader("💪 Your Strengths")
+
+                for strength in assessment.strengths:
+
+                    st.markdown(
+                        f"- {strength}"
+                    )
+
+            # ------------------------------------------------
+            # CAREER MATCHES
+            # ------------------------------------------------
 
             st.subheader(
                 "🎯 Recommended Career Paths"
             )
 
-            # Handle common assessment structures
-            recommendations = getattr(
-                assessment,
-                "recommended_careers",
-                None,
-            )
+            if not assessment.matches:
 
-            if recommendations is None:
-                recommendations = getattr(
-                    assessment,
-                    "career_paths",
-                    None,
+                st.info(
+                    "No career matches were returned."
                 )
-
-            if recommendations:
-
-                for i, career in enumerate(
-                    recommendations,
-                    start=1,
-                ):
-
-                    if isinstance(career, str):
-
-                        st.markdown(
-                            f"### {i}. {career}"
-                        )
-
-                    else:
-
-                        title = getattr(
-                            career,
-                            "title",
-                            None,
-                        )
-
-                        if title is None:
-                            title = getattr(
-                                career,
-                                "name",
-                                "Career Option",
-                            )
-
-                        st.markdown(
-                            f"### {i}. {title}"
-                        )
-
-                        description = getattr(
-                            career,
-                            "description",
-                            None,
-                        )
-
-                        if description:
-                            st.write(description)
 
             else:
 
-                st.write(assessment)
+                for index, match in enumerate(
+                    assessment.matches,
+                    start=1,
+                ):
+
+                    with st.container(
+                        border=True
+                    ):
+
+                        st.markdown(
+                            f"### {index}. {match.career_title}"
+                        )
+
+                        st.metric(
+                            "Match Score",
+                            f"{match.match_score}%",
+                        )
+
+                        st.write(
+                            match.reason
+                        )
+
+                        if match.required_skills:
+
+                            st.markdown(
+                                "**Required Skills**"
+                            )
+
+                            st.write(
+                                ", ".join(
+                                    match.required_skills
+                                )
+                            )
+
+                        if match.missing_skills:
+
+                            st.markdown(
+                                "**Missing Skills**"
+                            )
+
+                            st.write(
+                                ", ".join(
+                                    match.missing_skills
+                                )
+                            )
 
             st.divider()
 
@@ -495,84 +596,131 @@ elif page == "Skill Gap":
 
     else:
 
-        st.write(
-            "Based on your career assessment, focus on developing the skills below."
-        )
-
         assessment = st.session_state.assessment
 
-        # ----------------------------------------------------
-        # TRY TO FIND SKILL DATA
-        # ----------------------------------------------------
-
-        skill_gaps = getattr(
-            assessment,
-            "skill_gaps",
-            None,
+        st.write(
+            "Compare your current skills with the skills "
+            "required for your recommended careers."
         )
 
-        if skill_gaps is None:
+        # ----------------------------------------------------
+        # CAREER SELECTION
+        # ----------------------------------------------------
 
-            skill_gaps = getattr(
-                assessment,
-                "missing_skills",
-                None,
+        if not assessment.matches:
+
+            st.info(
+                "No career matches are available."
             )
-
-        if skill_gaps:
-
-            if isinstance(
-                skill_gaps,
-                dict,
-            ):
-
-                for skill, details in skill_gaps.items():
-
-                    st.markdown(
-                        f"### 🛠️ {skill}"
-                    )
-
-                    if isinstance(
-                        details,
-                        str,
-                    ):
-                        st.write(details)
-
-                    else:
-                        st.write(details)
-
-            else:
-
-                for skill in skill_gaps:
-
-                    if isinstance(
-                        skill,
-                        str,
-                    ):
-                        st.markdown(
-                            f"- {skill}"
-                        )
-
-                    else:
-
-                        skill_name = getattr(
-                            skill,
-                            "name",
-                            None,
-                        )
-
-                        if skill_name is None:
-                            skill_name = str(skill)
-
-                        st.markdown(
-                            f"- {skill_name}"
-                        )
 
         else:
 
-            st.info(
-                "No detailed skill-gap data was returned by the assessment."
+            career_names = [
+                match.career_title
+                for match in assessment.matches
+            ]
+
+            selected_career = st.selectbox(
+                "Select a career",
+                career_names,
             )
+
+            selected_match = next(
+                match
+                for match in assessment.matches
+                if match.career_title == selected_career
+            )
+
+            # ------------------------------------------------
+            # SKILL GAP DATA
+            # ------------------------------------------------
+
+            st.subheader(
+                f"🛠️ Skill Gaps for {selected_match.career_title}"
+            )
+
+            if selected_match.skill_gaps:
+
+                gap_rows = []
+
+                for gap in selected_match.skill_gaps:
+
+                    gap_rows.append(
+                        {
+                            "Skill": gap.skill,
+                            "Current Level": gap.current_level,
+                            "Required Level": gap.required_level,
+                            "Gap": gap.gap_score,
+                        }
+                    )
+
+                # Plotly chart
+                fig = px.bar(
+                    gap_rows,
+                    x="Skill",
+                    y=["Current Level", "Required Level"],
+                    barmode="group",
+                    title="Current vs Required Skill Level",
+                    range_y=[0, 100],
+                )
+
+                st.plotly_chart(
+                    fig,
+                    use_container_width=True,
+                )
+
+                # Detailed table
+                st.subheader(
+                    "📋 Skill Gap Details"
+                )
+
+                for gap in selected_match.skill_gaps:
+
+                    st.markdown(
+                        f"### {gap.skill}"
+                    )
+
+                    col1, col2, col3 = st.columns(3)
+
+                    with col1:
+                        st.metric(
+                            "Current",
+                            f"{gap.current_level}%",
+                        )
+
+                    with col2:
+                        st.metric(
+                            "Required",
+                            f"{gap.required_level}%",
+                        )
+
+                    with col3:
+                        st.metric(
+                            "Gap",
+                            f"{gap.gap_score}%",
+                        )
+
+            else:
+
+                st.info(
+                    "No skill-gap details were returned."
+                )
+
+            # ------------------------------------------------
+            # MISSING SKILLS
+            # ------------------------------------------------
+
+            if selected_match.missing_skills:
+
+                st.subheader(
+                    "📚 Skills to Develop"
+                )
+
+                for skill in selected_match.missing_skills:
+
+                    st.markdown(
+                        f"- {skill}"
+                    )
 
         st.divider()
 
@@ -618,93 +766,145 @@ elif page == "Career Roadmap":
 
     else:
 
-        st.write(
-            "Here is your personalized career development roadmap."
-        )
-
         assessment = st.session_state.assessment
 
-        roadmap = getattr(
-            assessment,
-            "roadmap",
-            None,
+        st.write(
+            "Follow the roadmap to move toward your target career."
         )
 
-        if roadmap:
+        # ----------------------------------------------------
+        # CAREER SELECTION
+        # ----------------------------------------------------
+
+        if not assessment.matches:
+
+            st.info(
+                "No career matches are available."
+            )
+
+        else:
+
+            career_names = [
+                match.career_title
+                for match in assessment.matches
+            ]
+
+            selected_career = st.selectbox(
+                "Select a career roadmap",
+                career_names,
+            )
+
+            selected_match = next(
+                match
+                for match in assessment.matches
+                if match.career_title == selected_career
+            )
 
             # ------------------------------------------------
-            # LIST ROADMAP
+            # ROADMAP
             # ------------------------------------------------
 
-            if isinstance(
-                roadmap,
-                list,
-            ):
+            st.subheader(
+                f"🚀 Roadmap for {selected_match.career_title}"
+            )
 
-                for i, step in enumerate(
+            roadmap = selected_match.learning_roadmap
+
+            if roadmap:
+
+                for index, item in enumerate(
                     roadmap,
                     start=1,
                 ):
 
-                    st.markdown(
-                        f"### Step {i}"
-                    )
-
-                    if isinstance(
-                        step,
-                        str,
+                    with st.container(
+                        border=True
                     ):
-                        st.write(step)
 
-                    else:
-                        st.write(step)
+                        st.markdown(
+                            f"### Phase {index}: {item.phase}"
+                        )
 
-            elif isinstance(
-                roadmap,
-                dict,
-            ):
+                        st.caption(
+                            f"⏱️ {item.timeframe}"
+                        )
 
-                for title, details in roadmap.items():
+                        st.write(
+                            item.objective
+                        )
 
-                    st.markdown(
-                        f"### {title}"
-                    )
+                        if item.topics:
 
-                    st.write(details)
+                            st.markdown(
+                                "**Topics to Learn**"
+                            )
+
+                            for topic in item.topics:
+
+                                st.markdown(
+                                    f"- {topic}"
+                                )
+
+                        st.markdown(
+                            f"**Deliverable:** {item.deliverable}"
+                        )
 
             else:
 
-                st.write(roadmap)
-
-        else:
+                st.info(
+                    "No learning roadmap was returned."
+                )
 
             # ------------------------------------------------
-            # FALLBACK ROADMAP
+            # PROJECTS
             # ------------------------------------------------
 
-            st.markdown(
-                """
-                ### 📚 Step 1 — Build Fundamentals
+            if selected_match.recommended_projects:
 
-                Strengthen the core skills required for your target career.
+                st.divider()
 
-                ### 🛠️ Step 2 — Practice
+                st.subheader(
+                    "💻 Recommended Projects"
+                )
 
-                Complete practical exercises and small projects.
+                for project in selected_match.recommended_projects:
 
-                ### 💼 Step 3 — Build a Portfolio
+                    with st.container(
+                        border=True
+                    ):
 
-                Create projects that demonstrate your abilities.
+                        st.markdown(
+                            f"### {project.title}"
+                        )
 
-                ### 🎓 Step 4 — Advanced Learning
+                        st.write(
+                            project.description
+                        )
 
-                Learn advanced concepts and tools relevant to your career.
+                        if project.skills:
 
-                ### 🚀 Step 5 — Apply
+                            st.write(
+                                "**Skills practiced:** "
+                                + ", ".join(project.skills)
+                            )
 
-                Start applying for internships, freelance work, or jobs.
-                """
-            )
+            # ------------------------------------------------
+            # NEXT STEPS
+            # ------------------------------------------------
+
+            if selected_match.next_steps:
+
+                st.divider()
+
+                st.subheader(
+                    "✅ Next Steps"
+                )
+
+                for step in selected_match.next_steps:
+
+                    st.markdown(
+                        f"- {step}"
+                    )
 
         st.divider()
 
@@ -758,15 +958,19 @@ elif page == "AI Career Counselor":
             horizontal=True,
         )
 
+        level_descriptions = {
+            "Beginner":
+                "Simple explanations with step-by-step guidance.",
+
+            "Intermediate":
+                "More technical and practical guidance.",
+
+            "Expert":
+                "Advanced career and technical guidance.",
+        }
+
         st.caption(
-            {
-                "Beginner":
-                    "Simple explanations with step-by-step guidance.",
-                "Intermediate":
-                    "More technical and practical guidance.",
-                "Expert":
-                    "Advanced career and technical guidance.",
-            }[experience_level]
+            level_descriptions[experience_level]
         )
 
         # ----------------------------------------------------
@@ -817,6 +1021,8 @@ elif page == "AI Career Counselor":
                         }
                     )
 
+                    st.rerun()
+
                 except Exception as e:
 
                     st.error(
@@ -855,7 +1061,10 @@ elif page == "AI Career Counselor":
             )
 
             with st.chat_message("user"):
-                st.write(user_prompt)
+
+                st.write(
+                    user_prompt
+                )
 
             try:
 
@@ -876,7 +1085,10 @@ elif page == "AI Career Counselor":
                 with st.chat_message(
                     "assistant"
                 ):
-                    st.write(response)
+
+                    st.write(
+                        response
+                    )
 
             except Exception as e:
 
