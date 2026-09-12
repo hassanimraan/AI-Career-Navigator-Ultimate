@@ -3,39 +3,95 @@ from services.prompts import counselor_prompt
 from config import get_settings
 
 
+def chat_with_counselor(
+    question,
+    profile,
+    assessment,
+    level,
+    api_key,
+    model,
+):
+    """
+    Generate a response from the AI career counselor.
+    """
+
+    prompt = counselor_prompt(
+        question,
+        profile,
+        assessment,
+        level,
+    )
+
+    return generate_text(
+        prompt,
+        api_key,
+        model,
+    )
+
+
 def get_chat_response(
     profile,
     message,
     conversation=None,
     experience_level="Beginner",
 ):
+    """
+    Streamlit-friendly wrapper used by app.py.
+    """
+
     settings = get_settings()
 
-    # Convert conversation into a simple text history
+    # Get the latest assessment from session state if available.
+    assessment = None
+
+    try:
+        import streamlit as st
+
+        assessment = st.session_state.get(
+            "assessment",
+            None,
+        )
+    except Exception:
+        assessment = None
+
+    # Include recent conversation context.
     conversation_text = ""
 
     if conversation:
-        for item in conversation:
-            role = item.get("role", "user")
-            content = item.get("content", "")
-            conversation_text += f"{role}: {content}\n"
+        recent_messages = conversation[-10:]
 
-    # Build the counselor prompt
+        for item in recent_messages:
+            role = item.get(
+                "role",
+                "user",
+            )
+
+            content = item.get(
+                "content",
+                "",
+            )
+
+            conversation_text += (
+                f"{role}: {content}\n"
+            )
+
     prompt = counselor_prompt(
         message,
         profile,
-        None,
+        assessment,
         experience_level,
     )
 
-    # Add conversation history if available
     if conversation_text:
-        prompt = (
-            "Previous conversation:\n"
-            f"{conversation_text}\n\n"
-            "Current question:\n"
-            f"{prompt}"
-        )
+        prompt = f"""
+Previous conversation:
+
+{conversation_text}
+
+Current request:
+
+{prompt}
+"""
 
     return generate_text(
         prompt,
