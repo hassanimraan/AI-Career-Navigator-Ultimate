@@ -174,6 +174,7 @@ elif page == "Career Profile":
         )
        
         degree = st.text_input("Degree / field", placeholder="e.g., Electrical Engineering")
+        
         st.subheader("Skills")
         skill_text = st.text_area(
             "Skills and approximate levels",
