@@ -923,4 +923,3 @@ elif page == "AI Career Counselor":
                     "content": answer,
                 }
             )
-```
