@@ -2,11 +2,9 @@ import streamlit as st
 import plotly.express as px
 
 from models import CareerProfile
-from services.cv_parser import extract_cv_text
 from services.career_analyzer import analyze_career
-from services.chatbot import chat_with_counselor
-from services.esco_client import ESCOClient
-from config import get_settings
+from services.chatbot import get_chat_response
+from services.cv_parser import extract_text_from_file
 
 
 # ============================================================
@@ -17,47 +15,6 @@ st.set_page_config(
     page_title="AI Career Navigator",
     page_icon="🧭",
     layout="wide",
-    initial_sidebar_state="expanded",
-)
-
-
-# ============================================================
-# SETTINGS
-# ============================================================
-
-settings = get_settings()
-esco = ESCOClient(settings.esco_base_url)
-
-
-# ============================================================
-# CSS
-# ============================================================
-
-st.markdown(
-    """
-    <style>
-    .main-title {
-        font-size: 2.6rem;
-        font-weight: 800;
-        margin-bottom: .2rem;
-    }
-
-    .subtitle {
-        font-size: 1.05rem;
-        color: #64748b;
-        margin-bottom: 1.5rem;
-    }
-
-    .card {
-        padding: 1rem 1.2rem;
-        border: 1px solid #e2e8f0;
-        border-radius: 14px;
-        background: #ffffff;
-        margin-bottom: 1rem;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
 )
 
 
@@ -77,13 +34,12 @@ if "cv_text" not in st.session_state:
 if "chat_messages" not in st.session_state:
     st.session_state.chat_messages = []
 
-# THIS CONTROLS WHICH PAGE IS DISPLAYED
 if "current_page" not in st.session_state:
     st.session_state.current_page = "Home"
 
 
 # ============================================================
-# PAGE LIST
+# NAVIGATION
 # ============================================================
 
 pages = [
@@ -96,14 +52,7 @@ pages = [
 ]
 
 
-# ============================================================
-# NAVIGATION FUNCTION
-# ============================================================
-
 def go_to(page_name):
-    """
-    Change the current page and refresh Streamlit.
-    """
     st.session_state.current_page = page_name
     st.rerun()
 
@@ -116,66 +65,29 @@ with st.sidebar:
 
     st.title("🧭 AI Career Navigator")
 
-    # Find current page index
-    current_index = pages.index(st.session_state.current_page)
+    current_index = pages.index(
+        st.session_state.current_page
+    )
 
+    # IMPORTANT:
+    # Dynamic key prevents the sidebar radio from
+    # overwriting button-based navigation.
     selected_page = st.radio(
         "Navigate",
         pages,
         index=current_index,
-        key="navigation_radio",
+        key=f"navigation_{st.session_state.current_page}",
     )
 
-    # If user manually clicks a page in sidebar
     if selected_page != st.session_state.current_page:
         st.session_state.current_page = selected_page
         st.rerun()
 
     st.divider()
 
-    st.caption("MVP • Python + Streamlit + Gemini + ESCO")
-
-
-# ============================================================
-# HELPER
-# ============================================================
-
-def require_profile():
-
-    if not st.session_state.profile:
-
-        st.warning(
-            "Please complete the Career Profile first."
-        )
-
-        if st.button(
-            "👤 Go to Career Profile",
-            type="primary",
-        ):
-            go_to("Career Profile")
-
-        return False
-
-    return True
-
-
-def require_assessment():
-
-    if not st.session_state.assessment:
-
-        st.warning(
-            "Please complete the Career Assessment first."
-        )
-
-        if st.button(
-            "🎯 Go to Career Assessment",
-            type="primary",
-        ):
-            go_to("Career Assessment")
-
-        return False
-
-    return True
+    st.caption(
+        "MVP • Python + Streamlit + Gemini + ESCO"
+    )
 
 
 # ============================================================
@@ -191,70 +103,55 @@ page = st.session_state.current_page
 
 if page == "Home":
 
-    st.markdown(
-        '<div class="main-title">🧭 AI Career Navigator</div>',
-        unsafe_allow_html=True,
+    st.title("🧭 AI Career Navigator")
+
+    st.subheader(
+        "Your AI-powered career planning assistant"
     )
 
-    st.markdown(
-        '<div class="subtitle">'
-        "A personalized AI career counselor that turns your "
-        "education, skills, interests and goals into practical "
-        "career options and a learning plan."
-        "</div>",
-        unsafe_allow_html=True,
-    )
-
-    c1, c2, c3 = st.columns(3)
-
-    with c1:
-        st.metric("Career Matches", "3–5")
-
-    with c2:
-        st.metric("AI Engine", "Gemini")
-
-    with c3:
-        st.metric("Knowledge Source", "ESCO")
-
-    st.markdown("### How it works")
-
-    st.markdown(
+    st.write(
         """
-        1. Build your career profile.
-        2. Optionally upload your CV.
-        3. Gemini analyzes your profile.
-        4. ESCO provides occupation and skill context.
-        5. Review career matches.
-        6. Review skill gaps and roadmap.
-        7. Chat with the AI Career Counselor.
+        Discover suitable career paths, identify your skill gaps,
+        build a personalized roadmap, and get guidance from an
+        AI career counselor.
         """
     )
 
     st.divider()
 
-    # --------------------------------------------------------
-    # FIXED START BUTTON
-    # --------------------------------------------------------
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown("### 👤 Career Profile")
+        st.write(
+            "Tell us about your education, experience, interests, and goals."
+        )
+
+    with col2:
+        st.markdown("### 📊 Career Assessment")
+        st.write(
+            "Analyze your profile and discover suitable career directions."
+        )
+
+    with col3:
+        st.markdown("### 🚀 Career Roadmap")
+        st.write(
+            "Build a practical plan for improving your skills and reaching your goals."
+        )
+
+    st.divider()
 
     if st.button(
         "🚀 Start Assessment",
         type="primary",
         use_container_width=True,
     ):
-
-        # Start a NEW assessment
         st.session_state.profile = None
         st.session_state.assessment = None
         st.session_state.cv_text = ""
         st.session_state.chat_messages = []
 
-        # MOVE TO CAREER PROFILE
         go_to("Career Profile")
-
-    st.info(
-        "Start by creating your Career Profile. "
-        "The CV upload is optional."
-    )
 
 
 # ============================================================
@@ -263,155 +160,115 @@ if page == "Home":
 
 elif page == "Career Profile":
 
-    st.header("👤 Career Profile")
+    st.title("👤 Career Profile")
 
     st.write(
-        "Tell the navigator about your education, skills, "
-        "interests and career goals."
+        "Complete your profile so the AI can provide personalized career recommendations."
     )
 
-    with st.form("profile_form"):
+    with st.form("career_profile_form"):
 
-        education = st.selectbox(
-            "Education level",
-            [
-                "High School",
-                "Diploma",
-                "Bachelor's",
-                "Master's",
-                "PhD",
-                "Other",
-            ],
+        name = st.text_input(
+            "Name",
+            placeholder="Enter your name",
         )
 
-        degree = st.text_input(
-            "Degree / field",
-            placeholder="e.g., Computer Science",
-        )
-
-        st.subheader("Skills")
-
-        skill_text = st.text_area(
-            "Skills and approximate levels",
-            placeholder=(
-                "Python: intermediate\n"
-                "SQL: beginner\n"
-                "Machine Learning: beginner"
-            ),
-            height=130,
-        )
-
-        interests = st.text_area(
-            "Interests",
-            placeholder=(
-                "AI, data analysis, machine learning, automation"
-            ),
-        )
-
-        work_preferences = st.multiselect(
-            "Work preferences",
-            [
-                "Remote",
-                "Hybrid",
-                "On-site",
-                "Individual contributor",
-                "Team-based",
-                "Technical",
-                "Management",
-                "Research",
-                "Entrepreneurship",
-            ],
+        education = st.text_input(
+            "Education",
+            placeholder="e.g. BS Computer Science",
         )
 
         experience = st.text_area(
-            "Experience / projects",
-            placeholder=(
-                "Describe internships, jobs, university projects, "
-                "freelance work, certifications, etc."
-            ),
-            height=150,
+            "Experience",
+            placeholder="Describe your work experience, internships, projects, etc.",
+        )
+
+        skills = st.text_area(
+            "Current Skills",
+            placeholder="e.g. Python, Excel, Communication, SQL",
+        )
+
+        interests = st.text_area(
+            "Career Interests",
+            placeholder="e.g. AI, Data Science, Web Development",
         )
 
         career_goal = st.text_area(
-            "Career goal",
-            placeholder=(
-                "What do you want to achieve in the next 1–3 years?"
-            ),
-            height=100,
+            "Career Goal",
+            placeholder="What career do you want to pursue?",
         )
 
-        cv_file = st.file_uploader(
-            "Optional CV upload",
-            type=["pdf", "docx"],
+        uploaded_cv = st.file_uploader(
+            "Upload CV (optional)",
+            type=["pdf", "docx", "txt"],
         )
 
         submitted = st.form_submit_button(
             "💾 Save Profile & Continue",
             type="primary",
+            use_container_width=True,
         )
-
-    # --------------------------------------------------------
-    # SAVE PROFILE
-    # --------------------------------------------------------
 
     if submitted:
 
-        if (
-            not degree.strip()
-            or not skill_text.strip()
-            or not career_goal.strip()
-        ):
+        if not name.strip():
+            st.error("Please enter your name.")
 
-            st.error(
-                "Please provide at least your degree/field, "
-                "skills and career goal."
-            )
+        elif not education.strip():
+            st.error("Please enter your education.")
 
         else:
 
+            # ------------------------------------------------
+            # CV PROCESSING
+            # ------------------------------------------------
+
             cv_text = ""
 
-            if cv_file:
+            if uploaded_cv is not None:
 
                 try:
-
-                    cv_text = extract_cv_text(
-                        cv_file.getvalue(),
-                        cv_file.name,
+                    cv_text = extract_text_from_file(
+                        uploaded_cv
                     )
 
                     st.session_state.cv_text = cv_text
 
-                except Exception as exc:
-
-                    st.error(
-                        f"Could not read the CV: {exc}"
+                except Exception as e:
+                    st.warning(
+                        f"Could not process the CV: {e}"
                     )
 
-            profile = CareerProfile.from_form(
-                education=education,
-                degree=degree,
-                skill_text=skill_text,
-                interests=interests,
-                work_preferences=work_preferences,
-                experience=experience,
-                career_goal=career_goal,
-                cv_text=cv_text,
-            )
-
-            st.session_state.profile = profile
-            st.session_state.assessment = None
-
-            st.success(
-                "Profile saved successfully!"
-            )
-
             # ------------------------------------------------
-            # FIX:
-            # MOVE TO CAREER ASSESSMENT
+            # CREATE PROFILE
             # ------------------------------------------------
 
-            go_to("Career Assessment")
+            try:
+
+                profile = CareerProfile.from_form(
+                    name=name,
+                    education=education,
+                    experience=experience,
+                    skills=skills,
+                    interests=interests,
+                    career_goal=career_goal,
+                    cv_text=cv_text,
+                )
+
+                st.session_state.profile = profile
+                st.session_state.assessment = None
+
+                st.success(
+                    "Profile saved successfully!"
+                )
+
+                go_to("Career Assessment")
+
+            except Exception as e:
+
+                st.error(
+                    f"Could not save profile: {e}"
+                )
 
 
 # ============================================================
@@ -420,153 +277,179 @@ elif page == "Career Profile":
 
 elif page == "Career Assessment":
 
-    st.header("🎯 Career Assessment")
+    st.title("📊 Career Assessment")
 
-    if require_profile():
+    if st.session_state.profile is None:
+
+        st.warning(
+            "Please complete your Career Profile first."
+        )
+
+        if st.button(
+            "Go to Career Profile",
+            type="primary",
+        ):
+            go_to("Career Profile")
+
+    else:
+
+        st.write(
+            "Analyze your profile to discover suitable career paths."
+        )
 
         profile = st.session_state.profile
 
-        st.write(
-            "Your profile is ready. Let Gemini analyze "
-            "your best career options."
-        )
+        with st.expander(
+            "View Your Profile",
+            expanded=False,
+        ):
+
+            st.write(
+                f"**Name:** {getattr(profile, 'name', '')}"
+            )
+
+            st.write(
+                f"**Education:** {getattr(profile, 'education', '')}"
+            )
+
+            st.write(
+                f"**Experience:** {getattr(profile, 'experience', '')}"
+            )
+
+            st.write(
+                f"**Skills:** {getattr(profile, 'skills', '')}"
+            )
+
+            st.write(
+                f"**Interests:** {getattr(profile, 'interests', '')}"
+            )
+
+            st.write(
+                f"**Career Goal:** {getattr(profile, 'career_goal', '')}"
+            )
 
         st.divider()
 
-        # ----------------------------------------------------
-        # ANALYZE BUTTON
-        # ----------------------------------------------------
-
         if st.button(
-            "🧠 Analyze My Career Options",
+            "🔍 Analyze My Career",
             type="primary",
             use_container_width=True,
         ):
 
-            if not settings.gemini_api_key:
+            with st.spinner(
+                "Analyzing your profile..."
+            ):
 
-                st.error(
-                    "Gemini API key is missing. "
-                    "Please add GEMINI_API_KEY to your "
-                    "environment or Streamlit Secrets."
-                )
+                try:
 
-            else:
-
-                with st.spinner(
-                    "Analyzing your career profile..."
-                ):
-
-                    try:
-
-                        assessment = analyze_career(
-                            profile=profile,
-                            gemini_api_key=settings.gemini_api_key,
-                            model=settings.gemini_model,
-                            esco_client=esco,
-                        )
-
-                        st.session_state.assessment = assessment
-
-                        st.success(
-                            "Career assessment completed!"
-                        )
-
-                    except Exception as exc:
-
-                        st.error(
-                            f"Assessment failed: {exc}"
-                        )
-
-        # ----------------------------------------------------
-        # SHOW RESULTS
-        # ----------------------------------------------------
-
-        assessment = st.session_state.assessment
-
-        if assessment:
-
-            st.success(
-                "Your career recommendations are ready."
-            )
-
-            st.subheader("🎯 Top Career Matches")
-
-            for match in assessment.matches:
-
-                with st.container(border=True):
-
-                    c1, c2 = st.columns([4, 1])
-
-                    with c1:
-
-                        st.markdown(
-                            f"### {match.career_title}"
-                        )
-
-                        st.write(
-                            match.reason
-                        )
-
-                    with c2:
-
-                        st.metric(
-                            "Match",
-                            f"{match.match_score}%",
-                        )
-
-                    if match.esco_context:
-
-                        st.caption(
-                            f"ESCO context: "
-                            f"{match.esco_context}"
-                        )
-
-                    st.write(
-                        "**Required skills:** "
-                        + ", ".join(
-                            match.required_skills
-                        )
+                    assessment = analyze_career(
+                        profile
                     )
 
-            st.subheader("💪 Your Strengths")
+                    st.session_state.assessment = assessment
 
-            st.write(
-                " • ".join(
-                    assessment.strengths
-                )
-            )
+                except Exception as e:
 
-            st.subheader("💡 Overall Guidance")
+                    st.error(
+                        f"Career analysis failed: {e}"
+                    )
 
-            st.write(
-                assessment.summary
+        # ----------------------------------------------------
+        # SHOW ASSESSMENT
+        # ----------------------------------------------------
+
+        if st.session_state.assessment is not None:
+
+            assessment = st.session_state.assessment
+
+            st.success(
+                "Career assessment completed!"
             )
 
             st.divider()
 
-            # ------------------------------------------------
-            # NEXT PAGE BUTTONS
-            # ------------------------------------------------
+            st.subheader(
+                "🎯 Recommended Career Paths"
+            )
 
-            c1, c2 = st.columns(2)
+            # Handle common assessment structures
+            recommendations = getattr(
+                assessment,
+                "recommended_careers",
+                None,
+            )
 
-            with c1:
+            if recommendations is None:
+                recommendations = getattr(
+                    assessment,
+                    "career_paths",
+                    None,
+                )
 
-                if st.button(
-                    "📊 Continue to Skill Gap",
-                    use_container_width=True,
+            if recommendations:
+
+                for i, career in enumerate(
+                    recommendations,
+                    start=1,
                 ):
 
+                    if isinstance(career, str):
+
+                        st.markdown(
+                            f"### {i}. {career}"
+                        )
+
+                    else:
+
+                        title = getattr(
+                            career,
+                            "title",
+                            None,
+                        )
+
+                        if title is None:
+                            title = getattr(
+                                career,
+                                "name",
+                                "Career Option",
+                            )
+
+                        st.markdown(
+                            f"### {i}. {title}"
+                        )
+
+                        description = getattr(
+                            career,
+                            "description",
+                            None,
+                        )
+
+                        if description:
+                            st.write(description)
+
+            else:
+
+                st.write(assessment)
+
+            st.divider()
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+
+                if st.button(
+                    "🧩 View Skill Gap",
+                    type="primary",
+                    use_container_width=True,
+                ):
                     go_to("Skill Gap")
 
-            with c2:
+            with col2:
 
                 if st.button(
-                    "🛣️ Continue to Career Roadmap",
+                    "🗺️ View Career Roadmap",
                     use_container_width=True,
                 ):
-
                     go_to("Career Roadmap")
 
 
@@ -576,92 +459,120 @@ elif page == "Career Assessment":
 
 elif page == "Skill Gap":
 
-    st.header("📊 Skill Gap Analysis")
+    st.title("🧩 Skill Gap Analysis")
 
-    if require_profile() and require_assessment():
+    if st.session_state.profile is None:
+
+        st.warning(
+            "Please complete your Career Profile first."
+        )
+
+        if st.button(
+            "Go to Career Profile",
+            type="primary",
+        ):
+            go_to("Career Profile")
+
+    elif st.session_state.assessment is None:
+
+        st.warning(
+            "Please complete your Career Assessment first."
+        )
+
+        if st.button(
+            "Go to Career Assessment",
+            type="primary",
+        ):
+            go_to("Career Assessment")
+
+    else:
+
+        st.write(
+            "Based on your career assessment, focus on developing the skills below."
+        )
 
         assessment = st.session_state.assessment
 
-        selected = st.selectbox(
-            "Choose a target career",
-            [
-                m.career_title
-                for m in assessment.matches
-            ],
+        # ----------------------------------------------------
+        # TRY TO FIND SKILL DATA
+        # ----------------------------------------------------
+
+        skill_gaps = getattr(
+            assessment,
+            "skill_gaps",
+            None,
         )
 
-        match = next(
-            m for m in assessment.matches
-            if m.career_title == selected
-        )
+        if skill_gaps is None:
 
-        gap_rows = [
-            {
-                "Skill": g.skill,
-                "Current": g.current_level,
-                "Required": g.required_level,
-                "Gap": g.gap_score,
-            }
-            for g in match.skill_gaps
-        ]
-
-        if gap_rows:
-
-            fig = px.bar(
-                gap_rows,
-                x="Skill",
-                y="Gap",
-                title=f"Skill Gap — {selected}",
-                range_y=[0, 100],
+            skill_gaps = getattr(
+                assessment,
+                "missing_skills",
+                None,
             )
 
-            fig.update_layout(
-                yaxis_title="Gap (%)",
-                xaxis_title="",
-            )
+        if skill_gaps:
 
-            st.plotly_chart(
-                fig,
-                use_container_width=True,
-            )
+            if isinstance(
+                skill_gaps,
+                dict,
+            ):
 
-            for gap in match.skill_gaps:
+                for skill, details in skill_gaps.items():
 
-                st.progress(
-                    max(
-                        0,
-                        min(
-                            100,
-                            gap.current_level,
-                        ),
-                    ),
-                    text=(
-                        f"{gap.skill}: "
-                        f"current {gap.current_level}% • "
-                        f"required {gap.required_level}%"
-                    ),
-                )
+                    st.markdown(
+                        f"### 🛠️ {skill}"
+                    )
+
+                    if isinstance(
+                        details,
+                        str,
+                    ):
+                        st.write(details)
+
+                    else:
+                        st.write(details)
+
+            else:
+
+                for skill in skill_gaps:
+
+                    if isinstance(
+                        skill,
+                        str,
+                    ):
+                        st.markdown(
+                            f"- {skill}"
+                        )
+
+                    else:
+
+                        skill_name = getattr(
+                            skill,
+                            "name",
+                            None,
+                        )
+
+                        if skill_name is None:
+                            skill_name = str(skill)
+
+                        st.markdown(
+                            f"- {skill_name}"
+                        )
 
         else:
 
             st.info(
-                "No detailed skill gaps were returned."
+                "No detailed skill-gap data was returned by the assessment."
             )
-
-        st.subheader("Missing / Weak Skills")
-
-        for skill in match.missing_skills:
-
-            st.write(f"- {skill}")
 
         st.divider()
 
         if st.button(
-            "🛣️ Continue to Career Roadmap",
+            "🗺️ Continue to Career Roadmap",
             type="primary",
             use_container_width=True,
         ):
-
             go_to("Career Roadmap")
 
 
@@ -671,84 +582,129 @@ elif page == "Skill Gap":
 
 elif page == "Career Roadmap":
 
-    st.header("🛣️ Career Roadmap")
+    st.title("🗺️ Career Roadmap")
 
-    if require_profile() and require_assessment():
+    if st.session_state.profile is None:
+
+        st.warning(
+            "Please complete your Career Profile first."
+        )
+
+        if st.button(
+            "Go to Career Profile",
+            type="primary",
+        ):
+            go_to("Career Profile")
+
+    elif st.session_state.assessment is None:
+
+        st.warning(
+            "Please complete your Career Assessment first."
+        )
+
+        if st.button(
+            "Go to Career Assessment",
+            type="primary",
+        ):
+            go_to("Career Assessment")
+
+    else:
+
+        st.write(
+            "Here is your personalized career development roadmap."
+        )
 
         assessment = st.session_state.assessment
 
-        selected = st.selectbox(
-            "Choose a target career",
-            [
-                m.career_title
-                for m in assessment.matches
-            ],
-            key="roadmap_career",
+        roadmap = getattr(
+            assessment,
+            "roadmap",
+            None,
         )
 
-        match = next(
-            m for m in assessment.matches
-            if m.career_title == selected
-        )
+        if roadmap:
 
-        st.subheader("📚 Learning Roadmap")
+            # ------------------------------------------------
+            # LIST ROADMAP
+            # ------------------------------------------------
 
-        for item in match.learning_roadmap:
+            if isinstance(
+                roadmap,
+                list,
+            ):
 
-            with st.container(border=True):
+                for i, step in enumerate(
+                    roadmap,
+                    start=1,
+                ):
 
-                st.markdown(
-                    f"**{item.phase} — "
-                    f"{item.timeframe}**"
-                )
+                    st.markdown(
+                        f"### Step {i}"
+                    )
 
-                st.write(
-                    item.objective
-                )
+                    if isinstance(
+                        step,
+                        str,
+                    ):
+                        st.write(step)
 
-                st.write(
-                    "**Topics:** "
-                    + ", ".join(item.topics)
-                )
+                    else:
+                        st.write(step)
 
-                st.write(
-                    "**Deliverable:** "
-                    + item.deliverable
-                )
+            elif isinstance(
+                roadmap,
+                dict,
+            ):
 
-        st.subheader("🚀 Recommended Projects")
+                for title, details in roadmap.items():
 
-        for project in match.recommended_projects:
+                    st.markdown(
+                        f"### {title}"
+                    )
+
+                    st.write(details)
+
+            else:
+
+                st.write(roadmap)
+
+        else:
+
+            # ------------------------------------------------
+            # FALLBACK ROADMAP
+            # ------------------------------------------------
 
             st.markdown(
-                f"**{project.title}**"
-            )
+                """
+                ### 📚 Step 1 — Build Fundamentals
 
-            st.write(
-                project.description
-            )
+                Strengthen the core skills required for your target career.
 
-            st.caption(
-                "Skills: "
-                + ", ".join(project.skills)
-            )
+                ### 🛠️ Step 2 — Practice
 
-        st.subheader("✅ Next Steps")
+                Complete practical exercises and small projects.
 
-        for step in match.next_steps:
+                ### 💼 Step 3 — Build a Portfolio
 
-            st.write(
-                f"☐ {step}"
+                Create projects that demonstrate your abilities.
+
+                ### 🎓 Step 4 — Advanced Learning
+
+                Learn advanced concepts and tools relevant to your career.
+
+                ### 🚀 Step 5 — Apply
+
+                Start applying for internships, freelance work, or jobs.
+                """
             )
 
         st.divider()
 
         if st.button(
-            "🤖 Continue to AI Career Counselor",
+            "🤖 Talk to AI Career Counselor",
             type="primary",
             use_container_width=True,
         ):
-
             go_to("AI Career Counselor")
 
 
@@ -758,12 +714,34 @@ elif page == "Career Roadmap":
 
 elif page == "AI Career Counselor":
 
-    st.header("🤖 AI Career Counselor")
+    st.title("🤖 AI Career Counselor")
 
-    if require_profile():
+    if st.session_state.profile is None:
 
-        level = st.radio(
-            "Explanation level",
+        st.warning(
+            "Please complete your Career Profile first."
+        )
+
+        if st.button(
+            "Go to Career Profile",
+            type="primary",
+        ):
+            go_to("Career Profile")
+
+    else:
+
+        st.write(
+            "Ask the AI counselor questions about your career."
+        )
+
+        st.divider()
+
+        # ----------------------------------------------------
+        # EXPERIENCE LEVEL
+        # ----------------------------------------------------
+
+        experience_level = st.radio(
+            "Choose your guidance level:",
             [
                 "Beginner",
                 "Intermediate",
@@ -772,154 +750,128 @@ elif page == "AI Career Counselor":
             horizontal=True,
         )
 
-        if st.session_state.assessment:
-
-            st.caption(
-                "The counselor uses your profile and "
-                "career assessment as context."
-            )
-
-        else:
-
-            st.caption(
-                "Complete a career assessment for richer answers."
-            )
+        st.caption(
+            {
+                "Beginner":
+                    "Simple explanations with step-by-step guidance.",
+                "Intermediate":
+                    "More technical and practical guidance.",
+                "Expert":
+                    "Advanced career and technical guidance.",
+            }[experience_level]
+        )
 
         # ----------------------------------------------------
         # QUICK QUESTIONS
         # ----------------------------------------------------
 
-        st.subheader("💬 Quick Questions")
-
         quick_question = st.selectbox(
-            "Choose a question",
+            "Quick question",
             [
-                "What career should I focus on first?",
-                "What are my biggest skill gaps?",
-                "What should I learn in the next 30 days?",
-                "What portfolio project should I build?",
-                "How can I improve my chances of getting hired?",
+                "Select a question...",
+                "What career should I choose?",
+                "What skills should I learn?",
+                "How can I get my first job?",
+                "How should I build my portfolio?",
+                "How can I prepare for interviews?",
             ],
         )
 
         if st.button(
-            f"✨ Get {level} Guidance",
+            "💡 Get Guidance",
             type="primary",
         ):
 
-            if not settings.gemini_api_key:
+            if quick_question != "Select a question...":
 
-                st.error(
-                    "Gemini API key is missing."
+                user_message = quick_question
+
+                st.session_state.chat_messages.append(
+                    {
+                        "role": "user",
+                        "content": user_message,
+                    }
                 )
 
-            else:
+                try:
 
-                with st.chat_message("user"):
-
-                    st.markdown(
-                        quick_question
+                    response = get_chat_response(
+                        profile=st.session_state.profile,
+                        message=user_message,
+                        conversation=st.session_state.chat_messages,
+                        experience_level=experience_level,
                     )
 
-                with st.chat_message("assistant"):
+                    st.session_state.chat_messages.append(
+                        {
+                            "role": "assistant",
+                            "content": response,
+                        }
+                    )
 
-                    with st.spinner(
-                        "Thinking..."
-                    ):
+                except Exception as e:
 
-                        try:
-
-                            answer = chat_with_counselor(
-                                question=quick_question,
-                                profile=st.session_state.profile,
-                                assessment=st.session_state.assessment,
-                                level=level,
-                                api_key=settings.gemini_api_key,
-                                model=settings.gemini_model,
-                            )
-
-                            st.markdown(answer)
-
-                        except Exception as exc:
-
-                            st.error(
-                                f"Counselor error: {exc}"
-                            )
-
-        st.divider()
+                    st.error(
+                        f"Could not get AI guidance: {e}"
+                    )
 
         # ----------------------------------------------------
-        # CHAT HISTORY
+        # DISPLAY CHAT HISTORY
         # ----------------------------------------------------
 
-        for msg in st.session_state.chat_messages:
+        for message in st.session_state.chat_messages:
 
             with st.chat_message(
-                msg["role"]
+                message["role"]
             ):
 
-                st.markdown(
-                    msg["content"]
+                st.write(
+                    message["content"]
                 )
 
         # ----------------------------------------------------
-        # NORMAL CHAT
+        # CHAT INPUT
         # ----------------------------------------------------
 
-        prompt = st.chat_input(
-            "Ask about careers, skills, learning or your roadmap..."
+        user_prompt = st.chat_input(
+            "Ask your career question..."
         )
 
-        if prompt:
+        if user_prompt:
 
             st.session_state.chat_messages.append(
                 {
                     "role": "user",
-                    "content": prompt,
+                    "content": user_prompt,
                 }
             )
 
             with st.chat_message("user"):
+                st.write(user_prompt)
 
-                st.markdown(prompt)
+            try:
 
-            if not settings.gemini_api_key:
-
-                answer = (
-                    "Gemini API key is missing. "
-                    "Please configure GEMINI_API_KEY."
+                response = get_chat_response(
+                    profile=st.session_state.profile,
+                    message=user_prompt,
+                    conversation=st.session_state.chat_messages,
+                    experience_level=experience_level,
                 )
 
-            else:
+                st.session_state.chat_messages.append(
+                    {
+                        "role": "assistant",
+                        "content": response,
+                    }
+                )
 
-                with st.chat_message("assistant"):
+                with st.chat_message(
+                    "assistant"
+                ):
+                    st.write(response)
 
-                    with st.spinner(
-                        "Thinking..."
-                    ):
+            except Exception as e:
 
-                        try:
-
-                            answer = chat_with_counselor(
-                                question=prompt,
-                                profile=st.session_state.profile,
-                                assessment=st.session_state.assessment,
-                                level=level,
-                                api_key=settings.gemini_api_key,
-                                model=settings.gemini_model,
-                            )
-
-                        except Exception as exc:
-
-                            answer = (
-                                f"Chatbot error: {exc}"
-                            )
-
-                    st.markdown(answer)
-
-            st.session_state.chat_messages.append(
-                {
-                    "role": "assistant",
-                    "content": answer,
-                }
-            )
+                st.error(
+                    f"Could not get AI response: {e}"
+                )
